@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ChatPanel } from "./chat-panel";
 
 export default function Home() {
@@ -11,9 +12,12 @@ export default function Home() {
             </p>
             <h1 className="text-xl font-semibold tracking-tight">Ops Desk</h1>
           </div>
-          <p className="text-right text-xs text-muted">
-            Cited answers from your notes
-          </p>
+          <div className="text-right text-xs text-muted">
+            <p>Cited answers from your notes</p>
+            <Link href="/evals" className="underline">
+              Evals
+            </Link>
+          </div>
         </div>
       </header>
       <ChatPanel />

@@ -60,3 +60,9 @@ Draft a shift note titled Morning handoff for owner Priya Raman about the open S
 ```
 
 Ops Desk calls `draftHandoff` and shows a card with the title, summary, and owner. The card stays in the chat. It does not send email or save the note. If nothing was retrieved, the card says the draft is not grounded.
+
+## Evals
+
+An eval is a fixed list of questions with an expected result, so a change can be checked against the same cases. This one checks that the sample policy is cited, that an unknown question is refused, and that an explicit draft returns a handoff card.
+
+Open [http://localhost:3000/evals](http://localhost:3000/evals) and click Run. The page loads the sample policy, then sends each case through the same chat route.
