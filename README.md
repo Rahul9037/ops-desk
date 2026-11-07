@@ -35,8 +35,8 @@ The browser never talks to Google. `useChat` posts the thread to the Next.js rou
 ```text
 Browser (message list, input, Stop)
   -> POST /api/chat          Next.js route handler
-    -> Gemini API            model gemini-3.8-flash
-      -> token stream back to the message list
+    -> Gemini API            model gemini-3.5-flash-lite
+      -> each text chunk back to the message list
 ```
 
-`gemini-3.8-flash` is the current Gemini Flash model, and its input and output tokens are free of charge on the Gemini API free tier (rate limits still apply). The route sets `thinkingLevel` to `low` so the first tokens arrive without a long thinking delay. Stop aborts the browser request, and the route forwards that abort to the model call.
+`gemini-3.5-flash-lite` is the current fastest Gemini Flash-Lite model, and its input and output tokens are free of charge on the Gemini API free tier (rate limits still apply). The route sets `thinkingLevel` to `minimal` so the model does not hold the reply for a reasoning pass. The chat route does not wait for the full answer: each provider text delta is written to the response as it arrives, and the UI leaves Sending on the first chunk. Stop aborts the browser request, and the route forwards that abort to the model call.
