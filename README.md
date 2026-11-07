@@ -4,7 +4,7 @@ Real-time internal operations copilot. Milestone 1 is a single streaming chat th
 
 ## Learning goal
 
-This milestone is practice for the streaming chat loop a product engineer owns. The browser should show tokens as they arrive, the user should be able to stop a response, and a failed request should stay visible in the thread instead of disappearing. The OpenAI key stays on the server. Later milestones add retrieval, tools, and evals on this same shell.
+This milestone is practice for the streaming chat loop a product engineer owns. The browser should show tokens as they arrive, the user should be able to stop a response, and a failed request should stay visible in the thread instead of disappearing. The Gemini key stays on the server. Later milestones add retrieval, tools, and evals on this same shell.
 
 ## Run locally
 
@@ -18,25 +18,25 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-You must put your own OpenAI API key in `.env.local`:
+You must put your own Gemini API key in `.env.local`:
 
 ```bash
-OPENAI_API_KEY=sk-...
+GOOGLE_GENERATIVE_AI_API_KEY=
 ```
 
-Restart `npm run dev` after you add or change the key. The key is read only by the server route. Do not commit `.env.local`.
+Create the key in [Google AI Studio](https://aistudio.google.com/apikey). Restart `npm run dev` after you add or change it. The key is read only by the server route. Do not commit `.env.local`.
 
 Without a key, Send still reaches `/api/chat`, and the thread shows an error telling you the key is missing.
 
 ## Request path
 
-The browser never talks to OpenAI. `useChat` posts the thread to the Next.js route, and that route calls the provider with `OPENAI_API_KEY`.
+The browser never talks to Google. `useChat` posts the thread to the Next.js route, and that route calls the Gemini API with `GOOGLE_GENERATIVE_AI_API_KEY`.
 
 ```text
 Browser (message list, input, Stop)
   -> POST /api/chat          Next.js route handler
-    -> OpenAI Responses API  model gpt-6-luna
+    -> Gemini API            model gemini-3.8-flash
       -> token stream back to the message list
 ```
 
-`gpt-6-luna` is the current small, fast OpenAI chat model for high-volume work. The route sets `reasoningEffort` to `none` so the first tokens arrive without a reasoning delay. Stop aborts the browser request, and the route forwards that abort to the model call.
+`gemini-3.8-flash` is the current Gemini Flash model, and its input and output tokens are free of charge on the Gemini API free tier (rate limits still apply). The route sets `thinkingLevel` to `low` so the first tokens arrive without a long thinking delay. Stop aborts the browser request, and the route forwards that abort to the model call.
