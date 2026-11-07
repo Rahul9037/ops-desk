@@ -1,0 +1,42 @@
+[
+  {
+    "id": "sev1-page",
+    "prompt": "When does a Sev-1 incident page the incident commander?",
+    "expect": "citation"
+  },
+  {
+    "id": "sev2-ack",
+    "prompt": "How soon is a Sev-2 incident acknowledged during the on-call shift?",
+    "expect": "citation"
+  },
+  {
+    "id": "sev3-overnight",
+    "prompt": "Is a Sev-3 incident paged overnight?",
+    "expect": "citation"
+  },
+  {
+    "id": "handoff-incomplete",
+    "prompt": "When is a handoff incomplete?",
+    "expect": "citation"
+  },
+  {
+    "id": "ops-manager",
+    "prompt": "Who is the ops manager for this rotation?",
+    "expect": "citation"
+  },
+  {
+    "id": "wifi-password",
+    "prompt": "What is the office wifi password?",
+    "expect": "no-source"
+  },
+  {
+    "id": "cafeteria-menu",
+    "prompt": "What is on the cafeteria menu this Friday?",
+    "expect": "no-source"
+  },
+  {
+    "id": "morning-handoff",
+    "prompt": "Draft a shift note titled Morning handoff for owner Priya Raman about the open Sev-2.",
+    "expect": "handoff"
+  }
+]
