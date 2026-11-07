@@ -9,7 +9,7 @@ import {
 
 export const maxDuration = 30;
 
-const MODEL_ID = "gemini-3.8-flash";
+const MODEL_ID = "gemini-3.5-flash-lite";
 
 function textError(message: string, status: number) {
   return new Response(message, {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     providerOptions: {
       google: {
         thinkingConfig: {
-          thinkingLevel: "low",
+          thinkingLevel: "minimal",
         },
       } satisfies GoogleLanguageModelOptions,
     },
