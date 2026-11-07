@@ -2,6 +2,8 @@
 
 Real-time internal operations copilot. The chat streams from Gemini, and answers can cite passages from Markdown you upload.
 
+A walkthrough of the send path, citations, the handoff card, and `/evals` is in [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
+
 ## Learning goal
 
 This app is practice for the streaming chat loop a product engineer owns, then for grounding that loop in a document. The browser should show tokens as they arrive, the user should be able to stop a response, and a failed request should stay visible in the thread. When a question depends on company notes, the answer should point at the passage it used, and it should say so when it has no source. The Gemini key stays on the server.
