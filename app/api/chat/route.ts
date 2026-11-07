@@ -1,15 +1,21 @@
 import { google, type GoogleLanguageModelOptions } from "@ai-sdk/google";
 import {
   convertToModelMessages,
+  createUIMessageStream,
   createUIMessageStreamResponse,
   streamText,
   toUIMessageStream,
   type UIMessage,
 } from "ai";
+import { embedQuery } from "@/lib/embeddings";
+import { libraryIsEmpty, retrieveSources } from "@/lib/retrieve";
+import { NO_SOURCE_REPLY, type OpsMetadata } from "@/lib/sources";
 
 export const maxDuration = 30;
 
 const MODEL_ID = "gemini-3.5-flash-lite";
+
+type OpsMessage = UIMessage<OpsMetadata>;
 
 function textError(message: string, status: number) {
   return new Response(message, {
@@ -18,8 +24,28 @@ function textError(message: string, status: number) {
   });
 }
 
+function textOf(message: UIMessage): string {
+  return message.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
+}
+
+function noSourceResponse() {
+  const stream = createUIMessageStream({
+    execute({ writer }) {
+      const id = "no-source";
+      writer.write({ type: "start" });
+      writer.write({ type: "text-start", id });
+      writer.write({ type: "text-delta", id, delta: NO_SOURCE_REPLY });
+      writer.write({ type: "text-end", id });
+      writer.write({ type: "finish", finishReason: "stop" });
+    },
+  });
+  return createUIMessageStreamResponse({ stream });
+}
+
 export async function POST(req: Request) {
-  let messages: UIMessage[];
+  let messages: OpsMessage[];
   try {
     const body: unknown = await req.json();
     if (
@@ -30,7 +56,7 @@ export async function POST(req: Request) {
     ) {
       return textError("Expected a messages array.", 400);
     }
-    messages = body.messages as UIMessage[];
+    messages = body.messages as OpsMessage[];
   } catch {
     return textError("Invalid JSON body.", 400);
   }
@@ -42,10 +68,51 @@ export async function POST(req: Request) {
     );
   }
 
+  const question = textOf(
+    [...messages].reverse().find((message) => message.role === "user") ?? {
+      id: "",
+      role: "user",
+      parts: [],
+    },
+  ).trim();
+  if (!question) {
+    return textError("Enter a question.", 400);
+  }
+
+  let citations: OpsMetadata["citations"] = [];
+  try {
+    if (!(await libraryIsEmpty())) {
+      const queryEmbedding = await embedQuery(question, req.signal);
+      citations = await retrieveSources(queryEmbedding);
+    }
+  } catch (error) {
+    console.error(
+      "Ops Desk retrieval failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return textError(
+      "Could not search your documents. Check GOOGLE_GENERATIVE_AI_API_KEY and try again.",
+      500,
+    );
+  }
+
+  if (!citations || citations.length === 0) {
+    return noSourceResponse();
+  }
+
+  const sourceBlock = citations
+    .map(
+      (source) =>
+        `[${source.label}] ${source.documentName} — ${source.heading}\n${source.text}`,
+    )
+    .join("\n\n");
+
   const result = streamText({
     model: google(MODEL_ID),
-    system:
-      "You are Ops Desk, an internal operations copilot. Answer clearly and briefly. This milestone has no company documents, tools, or live systems. If the user asks you to look something up, say you cannot yet.",
+    system: `You are Ops Desk, an internal operations copilot. Answer only from the sources below. After each claim, cite the source label in square brackets, such as [C1]. Use only the labels provided. If the sources do not contain the answer, say exactly: ${NO_SOURCE_REPLY} Do not guess or use outside knowledge.
+
+Sources:
+${sourceBlock}`,
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,
     providerOptions: {
@@ -60,6 +127,8 @@ export async function POST(req: Request) {
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
       stream: result.stream,
+      messageMetadata: ({ part }) =>
+        part.type === "start" ? { citations } : undefined,
       onError: (error) => {
         console.error(
           "Ops Desk model request failed:",
