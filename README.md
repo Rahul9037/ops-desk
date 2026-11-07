@@ -1,10 +1,10 @@
 # Ops Desk
 
-Real-time internal operations copilot. Milestone 1 is a single streaming chat thread: a message list, an input, a Stop control that aborts the response, and an error state when the request fails.
+Real-time internal operations copilot. The chat streams from Gemini, and answers can cite passages from Markdown you upload.
 
 ## Learning goal
 
-This milestone is practice for the streaming chat loop a product engineer owns. The browser should show tokens as they arrive, the user should be able to stop a response, and a failed request should stay visible in the thread instead of disappearing. The Gemini key stays on the server. Later milestones add retrieval, tools, and evals on this same shell.
+This app is practice for the streaming chat loop a product engineer owns, then for grounding that loop in a document. The browser should show tokens as they arrive, the user should be able to stop a response, and a failed request should stay visible in the thread. When a question depends on company notes, the answer should point at the passage it used, and it should say so when it has no source. The Gemini key stays on the server.
 
 ## Run locally
 
@@ -40,3 +40,13 @@ Browser (message list, input, Stop)
 ```
 
 `gemini-3.5-flash-lite` is the current fastest Gemini Flash-Lite model, and its input and output tokens are free of charge on the Gemini API free tier (rate limits still apply). The route sets `thinkingLevel` to `minimal` so the model does not hold the reply for a reasoning pass. The chat route does not wait for the full answer: each provider text delta is written to the response as it arrives, and the UI leaves Sending on the first chunk. Stop aborts the browser request, and the route forwards that abort to the model call.
+
+## Upload a note and read a citation
+
+1. Start the app with `GOOGLE_GENERATIVE_AI_API_KEY` set.
+2. Click **Load sample policy**, or upload your own `.md` file. The sample is `samples/shift-handoff-policy.md`.
+3. Ask something the note covers, such as when a Sev-1 pages the incident commander.
+4. The reply streams with labels like `[C1]`. Click a label, or the source chip under the message, to open that passage in the side panel. The highlighted text is the stored chunk, not a paraphrase.
+5. Ask something the note does not cover, such as the office wifi password. Ops Desk answers `I don't have a source for that.` and does not guess.
+
+Upload splits the Markdown on headings, embeds each chunk with `gemini-embedding-2` (768 dimensions, free tier, same API key), and stores the vectors in `data/library.json` on this machine. That file is gitignored. A question is embedded the same way, and only chunks with cosine similarity of at least 0.5 are sent to the model. If none qualify, the model is not asked to invent an answer.

@@ -11,7 +11,9 @@ export default function Home() {
             </p>
             <h1 className="text-xl font-semibold tracking-tight">Ops Desk</h1>
           </div>
-          <p className="text-right text-xs text-muted">Streaming copilot shell</p>
+          <p className="text-right text-xs text-muted">
+            Cited answers from your notes
+          </p>
         </div>
       </header>
       <ChatPanel />
