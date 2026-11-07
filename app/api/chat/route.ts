@@ -3,10 +3,12 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  isStepCount,
   streamText,
   toUIMessageStream,
   type UIMessage,
 } from "ai";
+import { asksForDraft, draftHandoffTool } from "@/lib/draft-handoff";
 import { embedQuery } from "@/lib/embeddings";
 import { libraryIsEmpty, retrieveSources } from "@/lib/retrieve";
 import { NO_SOURCE_REPLY, type OpsMetadata } from "@/lib/sources";
@@ -96,24 +98,39 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!citations || citations.length === 0) {
+  const wantsDraft = asksForDraft(question);
+  const grounded = citations.length > 0;
+  if (!grounded && !wantsDraft) {
     return noSourceResponse();
   }
 
+  const tools = { draftHandoff: draftHandoffTool() };
   const sourceBlock = citations
     .map(
       (source) =>
         `[${source.label}] ${source.documentName} — ${source.heading}\n${source.text}`,
     )
     .join("\n\n");
+  const system = grounded
+    ? `You are Ops Desk, an internal operations copilot. Answer only from the sources below. After each claim, cite the source label in square brackets, such as [C1]. Use only the labels provided. If the sources do not contain the answer, say exactly: ${NO_SOURCE_REPLY} Do not guess or use outside knowledge.
+When the user asks for a handoff, a shift note, or a draft, call draftHandoff once. Fill title, summary, and owner from the sources and the user's message. Do not send email, and do not save the note.
+
+Sources:
+${sourceBlock}`
+    : `You are Ops Desk. No source was retrieved. The user asked for a draft. Call draftHandoff once. Use only details the user wrote. Do not invent company policy, owners, or times. Do not send email, and do not save the note.`;
 
   const result = streamText({
     model: google(MODEL_ID),
-    system: `You are Ops Desk, an internal operations copilot. Answer only from the sources below. After each claim, cite the source label in square brackets, such as [C1]. Use only the labels provided. If the sources do not contain the answer, say exactly: ${NO_SOURCE_REPLY} Do not guess or use outside knowledge.
-
-Sources:
-${sourceBlock}`,
-    messages: await convertToModelMessages(messages),
+    system,
+    messages: await convertToModelMessages(messages, { tools }),
+    tools,
+    stopWhen: isStepCount(2),
+    prepareStep: wantsDraft
+      ? ({ stepNumber }) =>
+          stepNumber === 0
+            ? { toolChoice: { type: "tool", toolName: "draftHandoff" } }
+            : { toolChoice: "none" }
+      : undefined,
     abortSignal: req.signal,
     providerOptions: {
       google: {
@@ -128,7 +145,7 @@ ${sourceBlock}`,
     stream: toUIMessageStream({
       stream: result.stream,
       messageMetadata: ({ part }) =>
-        part.type === "start" ? { citations } : undefined,
+        part.type === "start" && grounded ? { citations } : undefined,
       onError: (error) => {
         console.error(
           "Ops Desk model request failed:",

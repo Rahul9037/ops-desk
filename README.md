@@ -50,3 +50,13 @@ Browser (message list, input, Stop)
 5. Ask something the note does not cover, such as the office wifi password. Ops Desk answers `I don't have a source for that.` and does not guess.
 
 Upload splits the Markdown on headings, embeds each chunk with `gemini-embedding-2` (768 dimensions, free tier, same API key), and stores the vectors in `data/library.json` on this machine. That file is gitignored. A question is embedded the same way, and only chunks with cosine similarity of at least 0.5 are sent to the model. If none qualify, the model is not asked to invent an answer.
+
+## Try a handoff card
+
+Type this, with or without a library:
+
+```text
+Draft a shift note titled Morning handoff for owner Priya Raman about the open Sev-2.
+```
+
+Ops Desk calls `draftHandoff` and shows a card with the title, summary, and owner. The card stays in the chat. It does not send email or save the note. If nothing was retrieved, the card says the draft is not grounded.

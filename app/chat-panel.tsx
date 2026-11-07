@@ -16,6 +16,39 @@ type LibraryDocument = {
   chunkCount: number;
 };
 
+type HandoffCardState =
+  | { status: "pending" }
+  | { status: "ready"; draft: { title: string; summary: string; owner: string } }
+  | { status: "error" };
+
+function isHandoffDraft(
+  value: unknown,
+): value is { title: string; summary: string; owner: string } {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as Record<string, unknown>;
+  return (
+    typeof draft.title === "string" &&
+    typeof draft.summary === "string" &&
+    typeof draft.owner === "string"
+  );
+}
+
+function handoffCards(parts: Array<{ type: string }>): HandoffCardState[] {
+  const cards: HandoffCardState[] = [];
+  for (const part of parts) {
+    if (part.type !== "tool-draftHandoff") continue;
+    const record = part as { type: string; state?: string; output?: unknown };
+    if (record.state === "output-available" && isHandoffDraft(record.output)) {
+      cards.push({ status: "ready", draft: record.output });
+    } else if (record.state === "output-error") {
+      cards.push({ status: "error" });
+    } else {
+      cards.push({ status: "pending" });
+    }
+  }
+  return cards;
+}
+
 function textFromParts(parts: Array<{ type: string; text?: string }>): string {
   return parts
     .filter((part) => part.type === "text" && typeof part.text === "string")
@@ -234,6 +267,10 @@ export function ChatPanel() {
                 Load the sample shift-handoff policy, then ask about severity
                 or handoff. Answers cite the passage they used.
               </p>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                To see a handoff card, type: Draft a shift note titled Morning
+                handoff for owner Priya Raman about the open Sev-2.
+              </p>
             </div>
           ) : null}
 
@@ -279,6 +316,49 @@ export function ChatPanel() {
                       ))}
                     </div>
                   ) : null}
+                  {isUser
+                    ? null
+                    : handoffCards(message.parts).map((card, index) =>
+                        card.status === "ready" ? (
+                          <article
+                            key={`handoff-${index}`}
+                            className="mt-3 rounded-xl border border-line bg-background px-3 py-3 text-foreground"
+                          >
+                            <p className="font-mono text-[11px] tracking-wide text-accent uppercase">
+                              Handoff draft
+                            </p>
+                            <h3 className="mt-1 text-sm font-semibold">
+                              {card.draft.title}
+                            </h3>
+                            <p className="mt-2 text-sm leading-6">
+                              {card.draft.summary}
+                            </p>
+                            <p className="mt-2 text-sm">
+                              <span className="text-muted">Owner </span>
+                              {card.draft.owner}
+                            </p>
+                            {citations.length > 0 ? null : (
+                              <p className="mt-2 text-xs leading-5 text-muted">
+                                This draft is not grounded in a source.
+                              </p>
+                            )}
+                          </article>
+                        ) : card.status === "pending" ? (
+                          <p
+                            key={`handoff-${index}`}
+                            className="mt-3 text-sm text-muted"
+                          >
+                            Drafting handoff…
+                          </p>
+                        ) : (
+                          <p
+                            key={`handoff-${index}`}
+                            className="mt-3 text-sm text-danger"
+                          >
+                            The handoff draft failed.
+                          </p>
+                        ),
+                      )}
                 </div>
               </article>
             );
